@@ -49,7 +49,31 @@ hybrid_defect_detector/
 
 ### Installation
 1. Clone the repository:
-2. ```bash
-   git clone 
+
+3. ```bash
+   git clone https://github.com/yong-again/anomaly_pipeline.git
+   ```
+   
+3. Install the required packages:
+    ```bash
+    pip install -r requirements.txt
+    ```
+   
+4. Install additional dependencies for Anomalib and SAM 2 as needed.
+    ```bash
+    git clone https://github.com/facebookresearch/sam2.git && cd sam2
+    
+    pip install -e .
+    ```
+   
+5. Download pre-trained weights for Anomalib (e.g., PatchCore) and SAM 2, and place them in the `models/` directory.
+    ```bash
+   mkdir -p models/anomalib models/sam2
+   s
+    cd checkpoints && \
+    ./download_ckpts.sh && \
+   
+   cd ..
+   
    ```
    
