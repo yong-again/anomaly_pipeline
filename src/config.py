@@ -1,10 +1,8 @@
 import multiprocessing
-from unicodedata import category
-
 import torch
 from pathlib import Path
 import datetime
-import re  # [신규] 'exp{N}' 패턴을 찾기 위해 re 임포트
+import re
 
 
 class Config:
@@ -15,7 +13,7 @@ class Config:
         # Data Paths
         # -----------
         category = 'cable'
-        self.data_dir = Path.cwd() / "my_dataset" / category
+        self.data_dir = Path.cwd() / "my_dataset" / category if category else Path.cwd() / "my_dataset"
         self.NORMAL_DATA_DIR = self.data_dir / "normal_dir"
         self.ANOMALY_DATA_DIR = self.data_dir / "abnormal_dir"
         self.MASK_DATA_DIR = self.data_dir / "mask_dir"
@@ -31,11 +29,11 @@ class Config:
         self.PRETRAINED_MODEL_DIR = Path.cwd() / "models"
         self.SAM_MODEL_PATH = self.PRETRAINED_MODEL_DIR / "sam_vit_h_4b8939.pth"
 
-        # [신규] 동적 실험 경로 생성
+        # [신규] 실험 경로 생성
         # e.g., results/2025-10-24/exp1
         self.EXP_DIR = self._create_experiment_dir(self.BASE_RESULTS_DIR)
 
-        # [신규] 모든 출력 경로는 EXP_DIR 하위에 생성됩니다.
+        # 결과 경로는 EXP_DIR 하위에 생성됩니다.
         self.LOG_DIR = self.EXP_DIR / "logs"
         self.VISUALIZATION_DIR = self.EXP_DIR / "visualizations"
         self.CHECKPOINT_DIR = self.EXP_DIR / "checkpoints"  # 체크포인트 저장 위치
@@ -107,10 +105,8 @@ class Config:
             # 3. 새 실험 폴더 경로 (e.g., .../results/2025-10-24/exp1)
             new_exp_dir = date_dir / f"exp{next_exp_num}"
 
-            # 4. 실제 생성 (make_dirs에서 하위 폴더와 함께 생성됨)
-            # new_exp_dir.mkdir(parents=True, exist_ok=False)
-
             return new_exp_dir
+
         except Exception as e:
             print(f"실험 디렉토리 생성 실패: {e}")
             # 오류 발생 시 기본 'results' 폴더 사용

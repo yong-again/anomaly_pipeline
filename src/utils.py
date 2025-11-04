@@ -39,14 +39,13 @@ def setup_experiment(config: Config) -> logging.Logger:
         config.make_dirs()
     except Exception as e:
         print(f"디렉토리 생성 실패: {e}")
-        # 계속 진행하되, 로그 파일 저장은 실패할 수 있음
 
-    # 2. 로거 설정 (기존 get_logger 로직 통합)
+    # 2. 로거 설정
     logger = logging.getLogger("HybridDetector")  # 루트 로거 이름
     logger.setLevel(logging.INFO)  # 항상 INFO 레벨로 설정
 
     if _logger_initialized or logger.hasHandlers():
-        return logger  # 이미 설정됨
+        return logger
 
     # 콘솔 핸들러
     console_level = logging.INFO if config.VERBOSE else logging.WARNING
@@ -97,7 +96,6 @@ def visualize_results(
     """
     [수정] 결과 저장 경로가 'config.VISUALIZATION_DIR'로 변경되었습니다.
     """
-    # 로거 가져오기 (setup_experiment가 이미 호출되었다고 가정)
     logger = get_logger("Visualizer")
 
     # --- 1. 원본 + BBox (Panel 1) ---
@@ -143,7 +141,6 @@ def _add_label(image: np.ndarray, text: str):
         image, text, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8,
         (255, 255, 255), 2, cv2.LINE_AA
     )
-
 
 # ---------------------------------------------------------------------------
 # [테스트]
