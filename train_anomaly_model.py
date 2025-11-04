@@ -1,18 +1,16 @@
 import warnings
-from pathlib import Path
-import logging  # [신규] logging 임포트
+import os
 
 # Anomalib
 from anomalib.data import Folder
-from anomalib import TaskType
 from anomalib.data.utils import ValSplitMode
 from anomalib.models import get_model
 from anomalib.engine import Engine
 import albumentations as A
 from anomalib.deploy import ExportType
-
-from albumentations.pytorch import ToTensorV2
-from lightning.pytorch.callbacks import ModelCheckpoint
+from anomalib.loggers import AnomalibTensorBoardLogger
+from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping
+from anomalib.metrics import AUROC, F1Score
 
 # Config 및 [신규] setup_experiment 임포트
 try:
@@ -35,8 +33,15 @@ def train_anomaly_model():
     config = Config()
 
     # [신규] utils의 설정 함수를 호출하여 로거와 폴더를 생성합니다.
-    # 이 함수는 config.make_dirs()를 내부적으로 호출합니다.
     logger = setup_experiment(config)
+
+    # [신규] TensorBoard 로거 설정
+    version = str(config.LOG_DIR).split(os.sep)[-1]
+    tensorboard_logger = AnomalibTensorBoardLogger(
+        config.LOG_DIR,
+        version=version,
+        name='tensorboard'
+        )
 
     try:
         IMAGE_SIZE = config.IMAGE_SIZE
@@ -57,9 +62,7 @@ def train_anomaly_model():
     # 2. Augmentations 설정
     transform = A.Compose(
         [
-            #A.Resize(IMAGE_SIZE[0], IMAGE_SIZE[1]),
             A.Normalize(mean=(0.0, 0.0, 0.0), std=(1.0, 1.0, 1.0), max_pixel_value=255.0),
-            #ToTensorV2(),
         ]
     )
 
@@ -67,77 +70,74 @@ def train_anomaly_model():
     logger.info(f"데이터 로딩 중... (이미지 크기: {IMAGE_SIZE})")
     try:
         datamodule = Folder(
-            name=f"{config.ANOMALY_MODEL_NAME}_dataset",
+            name=config.ANOMALY_MODEL_NAME,
             root=str(normal_data_root),
             normal_dir=config.NORMAL_DATA_DIR,
+            abnormal_dir=config.ANOMALY_DATA_DIR,
+            mask_dir = config.MASK_DATA_DIR if hasattr(config, 'MASK_DATA_DIR') else None,
             train_batch_size=config.BATCH_SIZE,
             eval_batch_size=config.BATCH_SIZE,
             num_workers=config.NUM_WORKERS,
-            val_split_mode=ValSplitMode.FROM_TRAIN,
-            val_split_ratio=0.15,
+            val_split_mode=ValSplitMode.FROM_TEST,
+            val_split_ratio=0.3,
             seed=config.RANDOM_SEED,
         )
+
+        # setup() 호출
         datamodule.setup()
+
     except Exception as e:
         logger.critical(f"데이터 모듈 설정 실패: {e}")
         return
-
 
     # 4. 모델 초기화
     logger.info(f"{config.ANOMALY_MODEL_NAME} 모델을 생성합니다.")
     model = get_model(config.ANOMALY_MODEL_NAME)
 
-    # 5. 콜백(Callback) 설정
-    logger.info(f"체크포인트 저장 경로: {config.CHECKPOINT_DIR}")
-    # checkpoint_callback = [
-    #     ModelCheckpoint(
-    #     # 동적 실험 경로 하위 'checkpoints' 폴더
-    #     dirpath=str(config.CHECKPOINT_DIR),
-    #     # 'anomaly_model' (config에서 정의)
-    #     filename=config.ANOMALY_MODEL_PATH.stem,
-    #     # 정상 데이터만 학습하므로 모니터링할 지표 없음
-    #     monitor=None,
-    #     # 'best' 모델 저장을 비활성화
-    #     save_top_k=0,
-    #     # 마지막 에포크의 모델을 저장
-    #     save_last=True,
-    #     )
-    # ]
-
-    # checkpoint_callback = ModelCheckpoint(
-    #     dirpath=str(config.CHECKPOINT_DIR),
-    #     filename='best-model-{epoch:02d}',
-    #     save_top_k=1,
-    #     monitor='image_AUROC',
-    #     mode='max'
-    # )
-
-    # 6. 엔진(Trainer) 설정
+    # 5. 엔진(Trainer) 설정
+    # [신규] TensorBoard 로거 추가
     logger.info("학습 엔진(Trainer)을 설정합니다.")
+    checkpoint_callback = ModelCheckpoint(
+        dirpath="checkpoints",
+        filename="anomalib-{epoch:02d}-{image_AUROC:.2f}",
+        save_top_k=1,
+        monitor='image_AUROC',
+        mode="max",
+    )
     engine = Engine(
         accelerator="auto",
         devices=1,
-        #callbacks=[checkpoint_callback],
-        max_epochs=config.NUM_EPOCHS,
-        default_root_dir='./outputs',
+        max_epochs=-1,
+        log_every_n_steps=1,
+        callbacks=[checkpoint_callback],
+        check_val_every_n_epoch=1,
+        min_epochs=config.NUM_EPOCHS - 1,
+        default_root_dir=str(config.CHECKPOINT_DIR),
         enable_checkpointing=True,
-        logger=True
+        logger=tensorboard_logger,
+        detect_anomaly=True
     )
 
-    # 7. 모델 학습 시작
+    # 6. 모델 학습 시작
     logger.info("--- 학습을 시작합니다 ---")
-    engine.fit(model=model, datamodule=datamodule)
+    if datamodule.val_dataloader() is not None:
+        print("Validation 데이터로더가 설정되었습니다. 모델 성능이 에포크마다 평가됩니다.")
+        engine.fit(model=model, datamodule=datamodule)
+    else:
+        print("Validation 데이터로더가 설정되지 않았습니다. 모델 성능이 평가되지 않습니다.")
+        checkpoint_callback.monitor = None
+        engine.fit(model=model, datamodule=datamodule)
+
     logger.info("--- 학습이 완료되었습니다 ---")
 
-    # 8. 모델 파일 정리
-    # [수정] config.CHECKPOINT_DIR에서 파일을 찾습니다.
+    # 7. 모델 파일 정리
     last_ckpt_path_v1 = config.CHECKPOINT_DIR / "last.ckpt"
     last_ckpt_path_v2 = config.CHECKPOINT_DIR / f"{config.ANOMALY_MODEL_PATH.stem}-last.ckpt"
     final_model_path = config.ANOMALY_MODEL_PATH
 
     engine.export(model=model,
                   export_type=ExportType.TORCH,
-                  export_root=final_model_path
+                  export_root=last_ckpt_path_v2
                   )
 
     try:

@@ -80,12 +80,6 @@ class AnomalyDetector:
         transform = A.Compose(
             [
                 A.Resize(self.IMAGE_SIZE[0], self.IMAGE_SIZE[1]),
-                # BGR 이미지를 RGB로 변환 (anomalib 0.x의 PreProcessor는 자동 변환)
-                # Albumentations는 입력이 RGB라고 가정하므로,
-                # predict 시점에 BGR->RGB 변환이 필요할 수 있습니다.
-                # (테스트 결과: Albumentations Compose는 채널 순서를 신경쓰지 않고
-                # Normalize와 ToTensorV2가 잘 처리하는 것으로 보임)
-
                 # 정규화 (train과 동일하게)
                 A.Normalize(mean=(0.0, 0.0, 0.0), std=(1.0, 1.0, 1.0), max_pixel_value=255.0),
                 ToTensorV2(),

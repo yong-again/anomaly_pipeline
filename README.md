@@ -69,7 +69,7 @@ hybrid_defect_detector/
 5. Download pre-trained weights for Anomalib (e.g., PatchCore) and SAM 2, and place them in the `models/` directory.
     ```bash
    mkdir -p models/anomalib models/sam2
-   s
+
     cd checkpoints && \
     ./download_ckpts.sh && \
    
