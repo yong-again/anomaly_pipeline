@@ -40,7 +40,7 @@ class Config:
 
         # [수정] 모델 경로가 CHECKPOINT_DIR를 바라보도록 변경
         self.ANOMALY_MODEL_PATH = self.CHECKPOINT_DIR / "anomaly_model"
-        self.ANOMALY_MODEL_NAME = "patchcore"
+        self.ANOMALY_MODEL_NAME = "cfa"
 
         # [추가] 이미지 사이즈
         self.IMAGE_SIZE = (256, 256)
