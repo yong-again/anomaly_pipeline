@@ -13,7 +13,7 @@ class Config:
         # Data Paths
         # -----------
         category = 'cable'
-        self.data_dir = Path.cwd() / "my_dataset" / category if category else Path.cwd() / "my_dataset"
+        self.data_dir = Path.cwd() / "data" 
         self.NORMAL_DATA_DIR = self.data_dir / "normal_dir"
         self.ANOMALY_DATA_DIR = self.data_dir / "abnormal_dir"
         self.MASK_DATA_DIR = self.data_dir / "mask_dir"
