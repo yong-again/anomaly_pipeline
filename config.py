@@ -12,11 +12,9 @@ class Config:
         # -----------
         # Data Paths
         # -----------
-        category = 'cable'
-        self.data_dir = Path.cwd() / "data" 
-        self.NORMAL_DATA_DIR = self.data_dir / "normal_dir"
-        self.ANOMALY_DATA_DIR = self.data_dir / "abnormal_dir"
-        self.MASK_DATA_DIR = self.data_dir / "mask_dir"
+        self.data_dir = Path.cwd() / "data" / "transitor"
+        # self.NORMAL_IMAGE_DIR = self.data_dir / "train"
+        # #self.MASK_DATA_DIR = self.data_dir / "mask_dir"
 
 
         # -------------
@@ -40,7 +38,19 @@ class Config:
 
         # [수정] 모델 경로가 CHECKPOINT_DIR를 바라보도록 변경
         self.ANOMALY_MODEL_PATH = self.CHECKPOINT_DIR / "anomaly_model"
-        self.ANOMALY_MODEL_NAME = "cfa"
+        self.ANOMALY_MODEL_NAME = "patchcore"
+        
+        # [추가] PatchCore 모델 설정
+        # 사용 가능한 옵션: 'wide_resnet50_2', 'resnet18', 'efficientnet_b0', 'efficientnet_b4', 'timm_resnet18', 'timm_resnet50', 'timm_wide_resnet50_2' 등
+        self.BACKBONE = "wide_resnet50_2"  # 기본값: wide_resnet50_2
+        self.LAYERS = ('layer2', 'layer3')  # 특징 추출 레이어
+        self.PRE_TRAINED = True  # 사전 학습된 모델 사용 여부
+        self.CORESET_SAMPLING_RATIO = 0.1  # 코어셋 샘플링 비율
+        self.NUM_NEIGHBORS = 9  # KNN에서 사용할 이웃 수
+        self.PRE_PROCESSOR = True  # 전처리기 사용 여부
+        self.POST_PROCESSOR = True  # 후처리기 사용 여부
+        self.EVALUATOR = True  # 평가기 사용 여부
+        self.VISUALIZER = True  # 시각화 도구 사용 여부
 
         # [추가] 이미지 사이즈
         self.IMAGE_SIZE = (256, 256)
@@ -114,7 +124,8 @@ class Config:
 
     def make_dirs(self):
         """ [수정] EXP_DIR 하위의 모든 필수 디렉토리를 생성합니다. """
-        self.data_dir.mkdir(parents=True, exist_ok=True)
+        # [수정] data_dir는 자동으로 생성하지 않음 (이미 존재해야 함)
+        # self.data_dir.mkdir(parents=True, exist_ok=True)
         self.PRETRAINED_MODEL_DIR.mkdir(parents=True, exist_ok=True)
 
         # [신규] 새 실험 경로 하위 폴더 생성
